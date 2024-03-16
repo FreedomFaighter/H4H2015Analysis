@@ -1,0 +1,89 @@
+\documentclass{article}
+\usepackage{graphicx}
+\graphicspath{ {/home/JHFreeman/h4h/Images/} }
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\title{Learning Styles Assessment}
+\author{John Freeman}
+\date{}
+<<echo=FALSE,label=Headers>>=
+require(fastcluster)
+require(graphics)
+require(ggplot2)
+# LearningStyleAssessments <- read.csv('learning_style_assessments.csv', header = TRUE, sep = ',')
+@
+
+\input{Class57TitlePage.tex}
+
+\begin{figure}[htbp]
+  \begin{center}
+%<<fig=TRUE,echo=FALSE,label=Visual>>=
+% visualImage <- qplot(LearningStyleAssessments$Visual, geom="histogram", binwidth=0.05, main="Histogram For Visual Percentages", xlab="Visual", fill=I("blue"), col=I("yellow"), xlim=c(min(LearningStyleAssessments$Visual),max(LearningStyleAssessments$Visual)), ylim=c(0,count(LearningStyleAssessments, "Visual")))
+% print(visualImage)
+%@
+    \caption{Visual}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+%<<fig=TRUE,echo=FALSE,width=8,label=Auditory>>=
+% auditoryImage <- qplot(LearningStyleAssessments$Visual, geom="histogram", binwidth=0.05, main="Histogram For Auditory Percentages", xlab="Auditory", fill=I("blue"), col=I("yellow"), xlim=c(min(LearningStyleAssessments$Auditory),max(LearningStyleAssessments$Auditory)), ylim=c(0,count(LearningStyleAssessments, "Auditory")))
+% print(auditoryImage)
+%@
+    \caption{Auditory}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+%<<fig=TRUE,echo=FALSE,width=8,label=Tactile>>=
+% tactileImage <- qplot(LearningStyleAssessments$Visual, geom="histogram", binwidth=0.05, main="Histogram For Tactile Percentages", xlab="Tactile", fill=I("blue"), col=I("yellow"), xlim=c(min(LearningStyleAssessments$Tactile),max(LearningStyleAssessments$Tactile)), ylim=c(0,count(LearningStyleAssessments, "Tactile")))
+% print(tactileImage)
+%@
+    \caption{Tactile}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+<<fig=TRUE,echo=FALSE,width=8,label=Cluster>>=
+    labelColors = c("#CDB380", "#036564", "#EB6841")
+    hc <- hclust(dist(USArrests), "ave")
+    clusMember = cutree(hc, 3)
+    colLab <- function(n) {
+      if (is.leaf(n)) {
+          a <- attributes(n)
+          labCol <- labelColors[clusMember[which(names(clusMember) == a$label)]]
+         attr(n, "nodePar") <- c(a$nodePar, lab.col = labCol)
+      }
+      n
+    }
+    hcd = as.dendrogram(hc)
+    clusDendro = dendrapply(hcd, colLab)
+    plot(clusDendro, type = "triangle")
+@
+    \caption{Hierarchical Cluster}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+<<fig=TRUE,echo=FALSE,width=8,label=EuclidianCluster>>=
+    hc <- hclust(dist(USArrests)^2, "cen")
+    memb <- cutree(hc, k=10)
+    cent <- NULL
+    for(k in 1:10){
+      cent <- rbind(cent, colMeans(USArrests[memb == k, , drop = FALSE]))
+    }
+    hc1 <- hclust(dist(cent)^2, method = "cen", members = table(memb))
+    opar <- par(mfrow = c(1, 2))
+    plot(hc, labels = FALSE, main = "Original Tree", type = "triangle")
+    plot(hc1, labels = FALSE, main = "Restart from 3 clusters", type = "triangle")
+    par(opar)
+@
+    \caption{Centroid Squared and 3 Cluster Restart}
+  \end{center}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,114 @@
+---
+title: "Analysis of Length Of Stay"
+author: "John Herschel Freeman"
+date: "October 9, 2015"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analysis of Length of Stay
+
+```{r load}
+  library(dygraphs)
+  library(tseries)
+  library(ggvis)
+  library(dplyr)
+  evita <- read.csv('Evita.csv', header = TRUE, sep =',')
+  evita$BeginDate = as.Date(evita$BeginDate, '%m/%d/%Y')
+  evita$EndDate = as.Date(evita$EndDate, '%m/%d/%Y')
+  drops = c("EntityID", "EnrollmentID")
+  evita = evita[,!(names(evita) %in% drops)]
+  evita$LOSPlusOne = evita$LOS + 1
+  head(evita)
+```
+
+```{r histogram}
+  evita %>% ggvis(~LOS) %>% layer_histograms()
+  
+  evita %>% ggvis(x = ~LOS) %>%
+    layer_densities(
+      adjust = input_slider(.1, 2, value = 1, step = .1, label = "Bandwidth adjustment"),
+      kernel = input_select(
+        c("Gaussian" = "gaussian",
+          "Rectangular" = "rectangular",
+          "Cosine" = "cosine"),
+        label = "Kernel"
+      )
+    ) 
+
+```
+
+```{r los, echo = FALSE}
+  LOSmean = mean(evita$LOS)
+  LOSvar = var(evita$LOS)
+  LOSstd = sqrt(LOSvar)
+  minDate = min(evita$BeginDate)
+  maxDate = max(evita$BeginDate)
+  minMonth = as.integer(format.Date(minDate, "%m"))
+  minYear = as.integer(format.Date(minDate, "%Y"))
+  maxMonth = as.integer(format.Date(maxDate, "%m"))
+  maxYear = as.integer(format.Date(maxDate, "%Y"))
+  monthYearEvita <- list()
+  numberOfMonths <- length(unique(format.Date(evita$BeginDate, "%m/%Y")))
+  k <- 1
+  for(i in minYear:maxYear)
+  {
+    miMonth <- minMonth
+    if(i != minYear)
+    {
+      miMonth = 1
+    }
+    maMonth <- maxMonth
+    if(i != maxYear)
+    {
+      maMonth = 12
+    }
+    for(j in miMonth:maMonth)
+    {
+      monthYearEvita[[k]] = subset(evita, as.integer(format.Date(BeginDate, "%m")) == j & as.integer(format.Date(BeginDate, "%Y")) == i)
+      k <- k + 1
+    }
+  }
+  
+  countPerMonth <- array()
+  meanPerMonth <- array()
+  variancePerMonth <- array()
+  stdPerMonth <- array()
+  for(l in 1:numberOfMonths)
+  {
+    countPerMonth[l] = nrow(as.data.frame(monthYearEvita[l]))
+    meanPerMonth[l] = mean(as.data.frame(monthYearEvita[l])$LOS)
+    variancePerMonth[l] = var(as.data.frame(monthYearEvita[l])$LOS)
+    stdPerMonth[l] = sqrt(variancePerMonth[l])
+  }
+  meanPerMonthTS = ts(meanPerMonth, start = c(minYear, minMonth), frequency = 12)
+  stdPerMonthTS = ts(stdPerMonth, start = c(minYear, minMonth), frequency = 12)
+  meanPerMonthTS = ts(meanPerMonthTS[10:length(meanPerMonthTS)], start = c(2011, 1), frequency = 12)
+  stdPerMonthTS = ts(stdPerMonthTS[10:length(stdPerMonthTS)], start = c(2011, 1), frequency = 12)
+  ar = cbind(meanPerMonthTS, stdPerMonthTS)
+  dygraph(ar) %>%
+    dySeries("stdPerMonthTS")
+```
+
+## Histograms of the Length of Stay by Factor
+
+### Length of Stay by Family v. Non-Family
+
+```{r hist, echo=FALSE}
+  evita$Family <- factor(evita$Family, labels = c("Non-Family", "Family"))
+  evita %>% ggvis(~LOS, stroke = ~Family) %>% group_by(Family) %>%
+    layer_bars() %>%
+    layer_histograms(stack = FALSE, width = 50, center = 25, closed = "left") 
+```
+
+### Length of Stay by JobPlacement
+
+```{r LOSJobPlacement, echo=FALSE}
+  evita$JobPlacement <- factor(evita$JobPlacement, labels = c("No Job Placement", "Job Placement"))
+  evita %>% ggvis(~LOS, stroke = ~JobPlacement) %>% auto_group() %>%
+    layer_bars() %>%
+    layer_histograms(stack = FALSE, width = 50, closed = "left", center = 25)
+```

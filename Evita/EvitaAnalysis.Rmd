@@ -1,0 +1,86 @@
+---
+title: "Untitled"
+author: "Volunteer"
+date: "September 18, 2015"
+output: html_document
+---
+
+```{r}
+library(dygraphs)
+library(ggplot2)
+library(utils)
+evita <- read.csv('Evita.csv', header = TRUE, sep =',')
+evita$BeginDate = as.Date(evita$BeginDate, '%m/%d/%Y')
+evita$EndDate = as.Date(evita$EndDate, '%m/%d/%Y')
+drops = c("EntityID", "EnrollmentID")
+evita = evita[,!(names(evita) %in% drops)]
+```
+
+# Plots
+
+## Histogram of Gender
+
+```{r, echo=FALSE}
+  #dygraph(data = evita, aes(evita$Gender))
+```
+
+## Histogram of Race
+
+```{r, echo=FALSE}
+  ggplot(data = evita, aes(evita$Race)) + geom_histogram(breaks=seq(0,2,by=1))
+```
+
+## Histogram of Ethnicity
+
+```{r, echo=FALSE}
+  ggplot(data = evita, aes(evita$Ethnicity)) + geom_histogram(breaks = seq(0, 2, by = 1)) + xlab('Gender') + ylab('Count') + labs(title='Histogram of Ethnicity')
+```
+
+
+## Histograms Age and Entry/Exit
+```{r, echo=FALSE}
+ggplot(data=evita, aes(evita$AgeEntry)) + geom_histogram(breaks = seq(18, max(evita$AgeEntry), by = 3)) + geom_freqpoly(col='red')
+ggplot(data=evita, aes(evita$AgeExit)) + geom_histogram(breaks = seq(18, max(evita$AgeExit), by = 3)) + geom_freqpoly(col='red')
+```
+
+## Histograms of Length of Stay and ln of Length of Stay
+Length of Stay takes on an exponential distribution, a ln transformation of the data gives it a more normal distribution
+
+```{r, echo=FALSE}
+ggplot(data=evita, aes(evita$LOS)) + geom_histogram()
+evita$LogLOS = log(evita$LOS)
+ggplot(data=evita, aes(evita$LogLOS)) + geom_histogram() + geom_freqpoly(col='red')
+```
+
+## $\Chi^{2}$
+
+```{r, echo=FALSE}
+  tmpEvita <- subset(evita, Race != -99 & Gender != -99 & Ethnicity != -99)
+  head(tmpEvita)
+  tbl <- as.table(rbind(c(tmpEvita$Race, tmpEvita$Gender, tmpEvita$Ethnicity, tmpEvita$LOS)))
+  Xsq <- chisq.test(tbl)
+  Xsq
+  tbl <- as.table(rbind(c(tmpEvita$Race, tmpEvita$Gender, tmpEvita$LOS)))
+  Xsq <- chisq.test(tbl)
+  Xsq
+  tbl <- as.table(rbind(c(tmpEvita$LOS)))
+  Xsq <- chisq.test(tbl)
+  Xsq
+```
+
+****
+
+## Kolmogorov-Smirnov Tests
+
+The Kolmogorov Smirnov Tests determine if two continuous distributions are equal.
+
+```{r}
+  work = subset(evita, JobTraining == 1)
+  nowork = subset(evita, JobTraining == 0)
+  KS = ks.test(nowork$LOS, work$LOS, "exponential", alternative = 'g')
+  KS
+  plot(ecdf(nowork$LOS), col="red")
+  plot(ecdf(work$LOS), add=TRUE, lty="dashed", col="green")
+```
+
+With a p-value of `r eval(KS$p.value)` it is determined that CDFs of the Length of Stay for those who under go job training and those who do not are not the same.
